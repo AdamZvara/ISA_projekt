@@ -3,7 +3,7 @@ CFLAGS = -g -Wall -Wextra
 LFLAGS = -lpcap
 
 project = flow
-src = $(project).cpp $(project).hpp parse.cpp parse.hpp common.hpp
+src = $(project).cpp $(project).hpp parse.cpp parse.hpp common.hpp common.cpp
 
 .PHONY: clean
 

@@ -6,13 +6,12 @@
  */
 
 #include <unistd.h>
-#include <iostream>
-#include <cstring>
-#include <exception>
+#include <cstring>  //strlen
 
 #include "parse.hpp"
+#include "common.hpp"
 
-#define OPTIONS "hf:c:a:i:m:"
+#define OPTIONS "hf:c:a:i:m:P"
 
 void print_help()
 {
@@ -26,7 +25,16 @@ void print_help()
                 << "  -m=COUNT\t\tSize of flow cache (default 1024)\n";
 }
 
-int convert_number(char *str_number)
+void debug_print_options(arguments& args)
+{
+    dpprintf("[parse.cpp] active\t%d\n", args.active);
+    dpprintf("[parse.cpp] inactive\t%d\n", args.inactive);
+    dpprintf("[parse.cpp] port\t%d\n", args.port);
+    dpprintf("[parse.cpp] cache size\t%d\n", args.cache_size);
+    dpprintf("[parse.cpp] collector\t%s\n", args.collector.c_str());
+}
+
+int arg_to_number(const char *str_number)
 {
     int converted_num; 
     char* end; // check if numerical values are converted correctly
@@ -35,9 +43,26 @@ int convert_number(char *str_number)
     if (strlen(end) != 0) {
         throw std::invalid_argument("Argument followed by an invalid number");
     } else if (converted_num < 0) {
-        throw std::invalid_argument("Argument must be followed by a non negative number");
+        throw std::invalid_argument("Argument must be followed by a positive number");
     } 
     return converted_num;
+}
+
+void parse_hostname(char *original, std::string& parsed_hostname, uint16_t& parsed_port)
+{
+    // try to find port number and parse it
+    size_t pos = 0;
+    std::string hostname = original;
+    std::string delim = ":";
+    std::string str_port;
+
+    if ((pos = hostname.find(delim)) != std::string::npos) {
+        str_port = hostname.substr(pos+1); // port number starts at pos+1 because of the colon
+        hostname.erase(pos);
+        parsed_port = arg_to_number(str_port.c_str()); // convert port string to integer
+    }
+
+    parsed_hostname = hostname;
 }
 
 void parse_arguments(int argc, char **argv, arguments& args)
@@ -51,19 +76,33 @@ void parse_arguments(int argc, char **argv, arguments& args)
             print_help();
             break;
 
-        case 'f':
-            std::cout << "File was given" << '\n';
-            break;
-        
         case 'a':
-            args.active = convert_number(optarg);
+            args.active = arg_to_number(optarg);
             break;
 
         case 'i':
+            args.inactive = arg_to_number(optarg);
             break;
+
+        case 'm':
+            args.cache_size = arg_to_number(optarg);
+            break;
+
+        case 'f':
+            std::cout << "File was given" << '\n';
+            break;
+
+        case 'c':
+        {
+            parse_hostname(optarg, args.collector, args.port);
+            convert_hostname(args.collector, args.address);
+            break;
+        }
 
         default:
             break;
         }
     }
+
+    debug_print_options(args);
 }
