@@ -10,6 +10,9 @@
 
 #include <fstream>
 #include <string>
+#include <cstring>
+#include <iostream>
+#include <arpa/inet.h>          // pton
 #include <netinet/in.h>         // sockaddr_in, in_addr
 
 #define DEF_COLLECTOR   "127.0.0.1"
@@ -21,16 +24,44 @@
 /**
  * @brief Structure storing values from command line used
  *  throughout the program
+ *
+ * @note __line is internal variable to store input from file or standard input
  */
 struct arguments
 {
-    std::ifstream file;
+    std::istream* file      = &std::cin;        // default input file
     std::string collector   = DEF_COLLECTOR;    // collector hostname
-    sockaddr address;                           // collector IP address
+    sockaddr_storage address;                   // collector IP address
     uint16_t port           = DEF_PORT;         // port number
     uint32_t active         = DEF_ACTIVE;       // active timer
     uint32_t inactive       = DEF_INACTIVE;     // inactive timer
     uint32_t cache_size     = DEF_COUNT;        // flow cache size
+    std::string __line;
+
+    /**
+     * @brief Construct a new arguments object with default address (ipv4 localhost)
+     */
+    arguments()
+    {
+        sockaddr_in defaddr;
+        defaddr.sin_family = AF_INET;
+        inet_pton(AF_INET6, DEF_COLLECTOR, &(defaddr.sin_addr.s_addr));
+        memcpy(&address, &defaddr, sizeof(address));
+    }
+
+    /**
+     * @brief Return single line read from input file
+     *
+     * @return Line read from input file
+     */
+    std::string readline()
+    {
+        if (file->eof())
+            __line.clear();
+        else
+            getline(*file, __line);
+        return __line;
+    }
 };
 
 /**

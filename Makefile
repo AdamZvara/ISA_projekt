@@ -1,14 +1,14 @@
-CC = g++
-CFLAGS = -g -Wall -Wextra
+CXX = g++
+CXXFLAGS = -g -Wall -Wextra
 LFLAGS = -lpcap
 
 project = flow
-src = $(project).cpp $(project).hpp parse.cpp parse.hpp common.hpp common.cpp
+src = $(project).o parse.o common.o
 
 .PHONY: clean
 
 $(project): $(src)
-	$(CC) $(CFLAGS) $^ -o $@ $(LFLAGS) 
-	
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LFLAGS)
+
 clean:
-	rm -rf flow
+	rm -rf flow *.o

@@ -35,10 +35,17 @@
 
 /**
  * @brief Convert hostname into structure sockaddr stored in structure arguments
- * 
+ *
  * @param[in]  hostname     String hostname
  * @param[out] out_address  sockaddr structure to store converted IP address
  */
-void convert_hostname(std::string hostname, sockaddr& out_address);
+void convert_hostname(std::string hostname, sockaddr_storage* out_address);
+
+/**
+ * @brief Check if given address is valid IPv6 address
+ *
+ * @param[in] address String IP address
+ */
+bool is_valid_ipv6(char* address);
 
 #endif

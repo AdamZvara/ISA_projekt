@@ -5,10 +5,12 @@
  * @date September 2022
  */
 
+#include <arpa/inet.h>          // pton
 #include <netdb.h>              // getaddrinfo
+#include <cstring>              // memcpy
 #include "common.hpp"
 
-void convert_hostname(std::string hostname, sockaddr& out_address)
+void convert_hostname(std::string hostname, sockaddr_storage* out_address)
 {
     int error, sockfd;
     addrinfo hints = {}, *address_list;
@@ -36,13 +38,13 @@ void convert_hostname(std::string hostname, sockaddr& out_address)
         // try to connect to address
         if (connect(sockfd, address->ai_addr, address->ai_addrlen) == 0) {
             #if DEBUG_PARSE == 1 // debugging print
-                char host[NI_MAXHOST];
+                char host[NI_MAXHOST] = {};
                 getnameinfo(address->ai_addr, address->ai_addrlen, host, sizeof(host), NULL, 0, NI_NUMERICHOST);
                 printf("[common.cpp] collIP\t%s\n", host);
             #endif
 
             // valid address was found
-            out_address = *(address->ai_addr);
+            memcpy(out_address, address->ai_addr, address->ai_addrlen);
             found = true;
             close(sockfd);
             break;
@@ -58,4 +60,10 @@ void convert_hostname(std::string hostname, sockaddr& out_address)
         throw std::runtime_error("no collector IP address could be resolved");
     }
 
+}
+
+bool is_valid_ipv6(char* address)
+{
+    sockaddr_in6 result = {};
+    return inet_pton(AF_INET6, address, &result) == 1 ? true : false;
 }

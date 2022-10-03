@@ -15,9 +15,9 @@
 
 void print_help()
 {
-    std::cerr << "Usage: ./flow [OPTIONS ...]\n" 
+    std::cerr << "Usage: ./flow [OPTIONS ...]\n"
             << "Generate netflow records from pcap file which are sent to collector over UDP\n\n"
-            << "OPTIONS\n" 
+            << "OPTIONS\n"
                 << "  -f=FILENAME\t\tInput pcap file (default STDIN)\n"
                 << "  -c=IP/HOSTNAME[:PORT]\tIP address or HOSTNAME of collector with optional UDP port (default 127.0.0.1:2055)\n"
                 << "  -a=SECONDS\t\tInterval in seconds, after which active records are exported to collector (default 60 seconds)\n"
@@ -36,7 +36,7 @@ void debug_print_options(arguments& args)
 
 int arg_to_number(const char *str_number)
 {
-    int converted_num; 
+    int converted_num;
     char* end; // check if numerical values are converted correctly
 
     converted_num = strtol(str_number, &end, 10);
@@ -44,7 +44,7 @@ int arg_to_number(const char *str_number)
         throw std::invalid_argument("Argument followed by an invalid number");
     } else if (converted_num < 0) {
         throw std::invalid_argument("Argument must be followed by a positive number");
-    } 
+    }
     return converted_num;
 }
 
@@ -56,7 +56,12 @@ void parse_hostname(char *original, std::string& parsed_hostname, uint16_t& pars
     std::string delim = ":";
     std::string str_port;
 
-    if ((pos = hostname.find(delim)) != std::string::npos) {
+    if (is_valid_ipv6(original)) {
+        parsed_hostname = hostname;
+        return;
+    }
+
+    if ((pos = hostname.find_last_of(delim)) != std::string::npos) {
         str_port = hostname.substr(pos+1); // port number starts at pos+1 because of the colon
         hostname.erase(pos);
         parsed_port = arg_to_number(str_port.c_str()); // convert port string to integer
@@ -72,7 +77,7 @@ void parse_arguments(int argc, char **argv, arguments& args)
     while ((c = getopt(argc, argv, OPTIONS)) != -1) {
         switch (c)
         {
-        case 'h': 
+        case 'h':
             print_help();
             break;
 
@@ -89,20 +94,18 @@ void parse_arguments(int argc, char **argv, arguments& args)
             break;
 
         case 'f':
-            std::cout << "File was given" << '\n';
+            args.file = new std::ifstream(optarg);
             break;
 
         case 'c':
-        {
             parse_hostname(optarg, args.collector, args.port);
-            convert_hostname(args.collector, args.address);
+            convert_hostname(args.collector, &(args.address));
             break;
-        }
 
         default:
             break;
         }
-    }
 
+    }
     debug_print_options(args);
 }

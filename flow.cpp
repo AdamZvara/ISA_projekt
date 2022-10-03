@@ -1,13 +1,13 @@
 /**
  * @file flow.cpp
  * @author xzvara01, xzvara01@stud.fit.vutbr.cz
- * @brief TODO: 
+ * @brief TODO:
  * @date September 2022
  */
 
 #include <sys/socket.h>
-#include <arpa/inet.h> 
-#include <netinet/in.h> 
+#include <arpa/inet.h>
+#include <netinet/in.h>
 #include <pcap.h>
 #include <netinet/if_ether.h>
 
@@ -15,25 +15,32 @@
 #include "parse.hpp"
 #include "common.hpp"
 
-void sendUdp(netflowV5H *head, netflowV5R *record)
+void sendUdp(netflowV5H *head, netflowV5R *record, arguments args)
 {
-    int socket_fd = socket(AF_INET, SOCK_DGRAM, 0);
+    int socket_fd = args.address.ss_family == AF_INET ?
+                    socket(AF_INET, SOCK_DGRAM, 0)    :
+                    socket(AF_INET6, SOCK_DGRAM, 0);
     if (socket_fd == -1) {
         return;
     }
 
-    // set destination port and address for connection
-    struct sockaddr_in dst_address;
-    dst_address.sin_family = AF_INET;
-    dst_address.sin_port = htons(9995);
-    inet_pton(AF_INET, "127.0.0.1", &(dst_address.sin_addr.s_addr));  // convert string IP address
+    socklen_t addrlen = args.address.ss_family == AF_INET ? sizeof(sockaddr_in) : sizeof(sockaddr_in6);
 
-    sendto(socket_fd, head, sizeof(*head), 0, (struct sockaddr*)&dst_address, sizeof(dst_address));
+    if (args.address.ss_family == AF_INET) {
+        ((sockaddr_in *)&args.address)->sin_port = htons(args.port);
+    } else {
+        ((sockaddr_in6 *)&args.address)->sin6_port = htons(args.port);
+    }
+
+    if (sendto(socket_fd, head, sizeof(*head), 0, (struct sockaddr*)&args.address, addrlen) == -1) {
+        perror("sendto: ");
+    };
 }
 
 int main(int argc, char **argv)
 {
     arguments args;
+
     try
     {
         parse_arguments(argc, argv, args);
@@ -42,47 +49,52 @@ int main(int argc, char **argv)
     {
         std::cerr << "ERROR: " << e.what() << '\n';
     }
-    
 
-    const unsigned char *packet;
-    struct pcap_pkthdr header;
-    char error_buffer[PCAP_ERRBUF_SIZE];
-    int ip_header_length;
-    const unsigned char *ip_header;
-    struct ether_header *eth_header;
-    struct sockaddr_in server;
+    std::string line;
+    // while (!(line = args.readline()).empty()) {
+    //     std::cout << line;
+    // }
 
-    int counter = 0;
 
-    pcap_t *handle = pcap_open_offline("test.pcap", error_buffer);
+    // const unsigned char *packet;
+    // struct pcap_pkthdr header;
+    // char error_buffer[PCAP_ERRBUF_SIZE];
+    // int ip_header_length;
+    // const unsigned char *ip_header;
+    // struct ether_header *eth_header;
+    // struct sockaddr_in server;
 
-    while ((packet = pcap_next(handle, &header)) != NULL) {
-        eth_header = (struct ether_header *) packet;
-            if (ntohs(eth_header->ether_type) != ETHERTYPE_IP) {
-        dfprintf("[flow.cpp] Not an IPv4 packet. Skipping...\n")
-        continue;
-    }
-        ip_header = packet + 14;
-        ip_header_length = ((*ip_header) & 0x0F);
-        ip_header_length = ip_header_length * 4;
-        unsigned char protocol = *(ip_header + 9);
-        dfprintf("[flow.cpp] Protocol %d\n", protocol)
+    // int counter = 0;
 
-        counter++;
-    }
+    // pcap_t *handle = pcap_open_offline("test.pcap", error_buffer);
 
-    dfprintf("[flow.cpp] All packets processed %d\n", counter)
+    // while ((packet = pcap_next(handle, &header)) != NULL) {
+    //     eth_header = (struct ether_header *) packet;
+    //         if (ntohs(eth_header->ether_type) != ETHERTYPE_IP) {
+    //     dfprintf("[flow.cpp] Not an IPv4 packet. Skipping...\n")
+    //     continue;
+    // }
+    //     ip_header = packet + 14;
+    //     ip_header_length = ((*ip_header) & 0x0F);
+    //     ip_header_length = ip_header_length * 4;
+    //     unsigned char protocol = *(ip_header + 9);
+    //     dfprintf("[flow.cpp] Protocol %d\n", protocol)
 
-    // netflowV5H head {};
-    // head.version = htons(5);
-    // head.count = htons(1);
-    // head.SysUpTime = htonl(5000);
-    // head.unix_secs = htonl(1664214475);
+    //     counter++;
+    // }
 
-    // netflowV5R record {};
-    // record.prot = 6;
+    // dfprintf("[flow.cpp] All packets processed %d\n", counter)
 
-    // sendUdp(&head, &record);
+    netflowV5H head {};
+    head.version = htons(5);
+    head.count = htons(1);
+    head.SysUpTime = htonl(5000);
+    head.unix_secs = htonl(1664214475);
+
+    netflowV5R record {};
+    record.prot = 6;
+
+    sendUdp(&head, &record, args);
 
     return 0;
 }
