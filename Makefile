@@ -2,13 +2,20 @@ CXX = g++
 CXXFLAGS = -g -Wall -Wextra
 LFLAGS = -lpcap
 
-project = flow
-src = $(project).o parse.o common.o
+PROJECT = flow
+SRC = $(wildcard *.cpp)
+SRC += $(wildcard src/*.cpp)
+OBJ = $(patsubst %.cpp, %.o, $(SRC))
 
-.PHONY: clean
+.PHONY: all clean
 
-$(project): $(src)
+all: $(PROJECT)
+
+$(PROJECT): $(OBJ)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LFLAGS)
 
+%.o: %.cpp %.hpp Makefile
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
 clean:
-	rm -rf flow *.o
+	rm -rf flow *.o src/*.o *.d

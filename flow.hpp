@@ -5,7 +5,7 @@
  * @date September 2022
  */
 
-#ifndef FLOW_HPP 
+#ifndef FLOW_HPP
 #define FLOW_HPP 1
 
 #include <cstdint>

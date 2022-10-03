@@ -17,14 +17,14 @@
 #define OK 0
 
 /* Define debug macros */
-#define DEBUG_MAIN 0
+#define DEBUG_MAIN 1
 #if DEBUG_MAIN == 1
     #define dfprintf(...) {fprintf(stderr, __VA_ARGS__);}
 #else
     #define dfprintf(...) {}
 #endif
 
-#define DEBUG_PARSE 1
+#define DEBUG_PARSE 0
 #if DEBUG_PARSE == 1
     #define dpprintf(...) {fprintf(stderr, __VA_ARGS__);}
 #else

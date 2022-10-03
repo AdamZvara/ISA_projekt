@@ -12,8 +12,8 @@
 #include <netinet/if_ether.h>
 
 #include "flow.hpp"
-#include "parse.hpp"
-#include "common.hpp"
+#include "src/parse.hpp"
+#include "src/common.hpp"
 
 void sendUdp(netflowV5H *head, netflowV5R *record, arguments args)
 {
@@ -51,9 +51,9 @@ int main(int argc, char **argv)
     }
 
     std::string line;
-    // while (!(line = args.readline()).empty()) {
-    //     std::cout << line;
-    // }
+    while (!(line = args.readline()).empty()) {
+        std::cout << line << '\n';
+    }
 
 
     // const unsigned char *packet;

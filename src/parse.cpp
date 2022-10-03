@@ -27,6 +27,7 @@ void print_help()
 
 void debug_print_options(arguments& args)
 {
+    (void) args; // compiler does not produce warning when not debugging
     dpprintf("[parse.cpp] active\t%d\n", args.active);
     dpprintf("[parse.cpp] inactive\t%d\n", args.inactive);
     dpprintf("[parse.cpp] port\t%d\n", args.port);
