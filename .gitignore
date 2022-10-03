@@ -1,3 +1,4 @@
 flow
 .vscode/*
 *.o
+*.d

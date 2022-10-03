@@ -6,6 +6,7 @@ PROJECT = flow
 SRC = $(wildcard *.cpp)
 SRC += $(wildcard src/*.cpp)
 OBJ = $(patsubst %.cpp, %.o, $(SRC))
+DEPENDS := $(patsubst %.cpp,%.d,$(SRC))
 
 .PHONY: all clean
 
@@ -14,8 +15,13 @@ all: $(PROJECT)
 $(PROJECT): $(OBJ)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LFLAGS)
 
+
+# generating dependency files
+# source https://stackoverflow.com/a/52036564
+-include $(DEPENDS)
+
 %.o: %.cpp %.hpp Makefile
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -MMD -MP -c $< -o $@
 
 clean:
-	rm -rf flow *.o src/*.o *.d
+	$(RM) $(PROJECT) $(DEPENDS) $(OBJ)

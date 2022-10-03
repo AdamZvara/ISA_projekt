@@ -15,7 +15,7 @@
 #include "src/parse.hpp"
 #include "src/common.hpp"
 
-void sendUdp(netflowV5H *head, netflowV5R *record, arguments args)
+void sendUdp(netflowV5H *head, netflowV5R *record, arguments& args)
 {
     int socket_fd = args.address.ss_family == AF_INET ?
                     socket(AF_INET, SOCK_DGRAM, 0)    :
@@ -51,7 +51,7 @@ int main(int argc, char **argv)
     }
 
     std::string line;
-    while (!(line = args.readline()).empty()) {
+    while (getline(*(args.file), line)) {
         std::cout << line << '\n';
     }
 

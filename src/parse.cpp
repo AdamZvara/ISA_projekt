@@ -96,6 +96,7 @@ void parse_arguments(int argc, char **argv, arguments& args)
 
         case 'f':
             args.file = new std::ifstream(optarg);
+            args._file_allocd = true;
             break;
 
         case 'c':

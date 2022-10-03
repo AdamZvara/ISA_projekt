@@ -14,6 +14,7 @@
 #include <iostream>
 #include <arpa/inet.h>          // pton
 #include <netinet/in.h>         // sockaddr_in, in_addr
+#include <netdb.h>              // getaddrinfo
 
 #define DEF_COLLECTOR   "127.0.0.1"
 #define DEF_PORT        2055
@@ -24,44 +25,39 @@
 /**
  * @brief Structure storing values from command line used
  *  throughout the program
- *
- * @note __line is internal variable to store input from file or standard input
  */
 struct arguments
 {
     std::istream* file      = &std::cin;        // default input file
+    bool _file_allocd       = false;            // indicator that file has been opened and needs to be freed
     std::string collector   = DEF_COLLECTOR;    // collector hostname
     sockaddr_storage address;                   // collector IP address
     uint16_t port           = DEF_PORT;         // port number
     uint32_t active         = DEF_ACTIVE;       // active timer
     uint32_t inactive       = DEF_INACTIVE;     // inactive timer
     uint32_t cache_size     = DEF_COUNT;        // flow cache size
-    std::string __line;
 
     /**
      * @brief Construct a new arguments object with default address (ipv4 localhost)
      */
     arguments()
     {
-        sockaddr_in defaddr;
-        defaddr.sin_family = AF_INET;
-        inet_pton(AF_INET6, DEF_COLLECTOR, &(defaddr.sin_addr.s_addr));
-        memcpy(&address, &defaddr, sizeof(address));
+        addrinfo hints = {}, *address_list;
+        hints.ai_family = AF_INET;
+        hints.ai_flags = AI_NUMERICHOST;
+
+        getaddrinfo(DEF_COLLECTOR, NULL, &hints, &address_list);
+        memcpy(&address, address_list->ai_addr, address_list->ai_addrlen);
+        freeaddrinfo(address_list);
     }
 
-    /**
-     * @brief Return single line read from input file
-     *
-     * @return Line read from input file
-     */
-    std::string readline()
+    ~arguments()
     {
-        if (file->eof())
-            __line.clear();
-        else
-            getline(*file, __line);
-        return __line;
+        if (_file_allocd) {
+            delete file;
+        }
     }
+
 };
 
 /**
