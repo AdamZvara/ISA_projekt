@@ -1,21 +1,26 @@
 /**
  * @file flow.cpp
- * @author xzvara01, xzvara01@stud.fit.vutbr.cz
+ * @author xzvara01 (xzvara01@stud.fit.vutbr.cz)
  * @brief TODO:
- * @date September 2022
+ * @date 2022-10-03
+ *
  */
 
+#include <iostream>
+#include <vector>
 #include <sys/socket.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <pcap.h>
-#include <netinet/if_ether.h>
+#include <netinet/in.h>      // sockaddr_in
 
 #include "flow.hpp"
+#include "src/store.hpp"
+#include "src/capture.hpp"
 #include "src/parse.hpp"
-#include "src/common.hpp"
+#include "src/debug.hpp"
 
-void sendUdp(netflowV5H *head, netflowV5R *record, arguments& args)
+uint64_t SysUpTime; // save system uptime from first captured packet
+uint64_t LastTime;  // store last time we checked flow_cache for records to export
+
+void sendUdp(const char *data, size_t size, arguments& args)
 {
     int socket_fd = args.address.ss_family == AF_INET ?
                     socket(AF_INET, SOCK_DGRAM, 0)    :
@@ -32,69 +37,119 @@ void sendUdp(netflowV5H *head, netflowV5R *record, arguments& args)
         ((sockaddr_in6 *)&args.address)->sin6_port = htons(args.port);
     }
 
-    if (sendto(socket_fd, head, sizeof(*head), 0, (struct sockaddr*)&args.address, addrlen) == -1) {
+    if (sendto(socket_fd, data, size, 0, (struct sockaddr*)&args.address, addrlen) == -1) {
         perror("sendto: ");
     };
 }
 
+void export_flows(flowc_t& flow_cache, arguments& args)
+{
+    std::vector<netflowV5R> flows_to_export;
+
+    for (auto record = flow_cache.cbegin(); record != flow_cache.cend();) {
+        // check for inactive timer
+        if (LastTime - SysUpTime - record->second.Last > args.inactive * 1000) {
+            dfprintf("Inactive timeout ran out: ");
+            dsfprintf();
+            flows_to_export.push_back(record->second); // store flows to be exported
+            flow_cache.erase(record++); // removing items from map while iterating workaround
+            continue;
+        }
+
+        // check for active timer
+        if (record->second.Last - record->second.First > args.active * 1000) {
+            dfprintf("Active timeout ran out: ");
+            dsfprintf();
+            flows_to_export.push_back(record->second); // store flows to be exported
+            flow_cache.erase(record++);
+            continue;
+        }
+
+        ++record; // removing items from map while iterating workaroundf
+    }
+
+    if (flows_to_export.empty()) {
+        return;
+    }
+
+    netflowV5H header {};
+    make_header(header, flows_to_export.size());
+
+    size_t buff_size = sizeof(header) + flows_to_export.size() * sizeof(netflowV5R);
+    char *buffer = new char[buff_size];
+    memset(buffer, 0, buff_size);
+    memcpy(buffer, &header, sizeof(header));
+    memcpy(buffer+sizeof(header), flows_to_export.data(), buff_size - sizeof(header));
+    sendUdp(buffer, buff_size, args);
+}
+
+void clear_cache(flowc_t& flow_cache, arguments& args)
+{
+    std::vector<netflowV5R> flows_to_export;
+
+    while (!flow_cache.empty()) {
+        int counter = 0;
+        for (auto record = flow_cache.cbegin(); record != flow_cache.cend();) {
+            flows_to_export.push_back(record->second); // store flows to be exported
+            flow_cache.erase(record++); // removing items from map while iterating workaround
+            if (++counter == 30) {
+                counter = 0;
+                break;
+            }
+        }
+
+        netflowV5H header {};
+        make_header(header, flows_to_export.size());
+
+        size_t buff_size = sizeof(header) + flows_to_export.size() * sizeof(netflowV5R);
+        char *buffer = new char[buff_size];
+        memset(buffer, 0, buff_size);
+        memcpy(buffer, &header, sizeof(header));
+        memcpy(buffer+sizeof(header), flows_to_export.data(), buff_size - sizeof(header));
+        sendUdp(buffer, buff_size, args);
+
+        flows_to_export.clear();
+    }
+}
+
 int main(int argc, char **argv)
 {
-    arguments args;
+    arguments args; // argument structure
+    Capture cap; // pcap structure for capturing packets
+    const char *filter_expr = "ip proto 1 or ip proto 6 or ip proto 17"; // pcap filter expression
 
-    try
-    {
+    flowc_t flow_cache; // storage of flows
+
+    try {
         parse_arguments(argc, argv, args);
+        cap.open(args.pcapfile);
+        cap.apply_filter(filter_expr);
+    } catch(const std::exception& e) {
+        std::cerr << "ERROR: " << e.what() << '\n';
+        return 1;
     }
-    catch(const std::exception& e)
-    {
+
+    int ret;
+
+    try {
+        while ((ret = cap.next_packet()) >= 0) {
+            flow_insert(cap, flow_cache);
+            if (time_second_passed(cap.header->ts.tv_sec, cap.header->ts.tv_usec)){
+                export_flows(flow_cache, args);
+            }
+        }
+    } catch(const std::exception& e) {
         std::cerr << "ERROR: " << e.what() << '\n';
     }
 
-    std::string line;
-    while (getline(*(args.file), line)) {
-        std::cout << line << '\n';
+    if (ret == PCAP_ERROR) {
+        std::cerr << "ERROR: pcap_next_ex failed\n";
+        return 1;
     }
 
+    dfcprintf(); // print out flow cache for debugging purposes
 
-    // const unsigned char *packet;
-    // struct pcap_pkthdr header;
-    // char error_buffer[PCAP_ERRBUF_SIZE];
-    // int ip_header_length;
-    // const unsigned char *ip_header;
-    // struct ether_header *eth_header;
-    // struct sockaddr_in server;
-
-    // int counter = 0;
-
-    // pcap_t *handle = pcap_open_offline("test.pcap", error_buffer);
-
-    // while ((packet = pcap_next(handle, &header)) != NULL) {
-    //     eth_header = (struct ether_header *) packet;
-    //         if (ntohs(eth_header->ether_type) != ETHERTYPE_IP) {
-    //     dfprintf("[flow.cpp] Not an IPv4 packet. Skipping...\n")
-    //     continue;
-    // }
-    //     ip_header = packet + 14;
-    //     ip_header_length = ((*ip_header) & 0x0F);
-    //     ip_header_length = ip_header_length * 4;
-    //     unsigned char protocol = *(ip_header + 9);
-    //     dfprintf("[flow.cpp] Protocol %d\n", protocol)
-
-    //     counter++;
-    // }
-
-    // dfprintf("[flow.cpp] All packets processed %d\n", counter)
-
-    netflowV5H head {};
-    head.version = htons(5);
-    head.count = htons(1);
-    head.SysUpTime = htonl(5000);
-    head.unix_secs = htonl(1664214475);
-
-    netflowV5R record {};
-    record.prot = 6;
-
-    sendUdp(&head, &record, args);
+    clear_cache(flow_cache, args);
 
     return 0;
 }

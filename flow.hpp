@@ -1,16 +1,17 @@
 /**
  * @file flow.hpp
- * @author xzvara01, xzvara01@stud.fit.vutbr.cz
+ * @author xzvara01 (xzvara01@stud.fit.vutbr.cz)
  * @brief Provide declarations for NetFlow (version 5) structures
- * @date September 2022
+ * @date 2022-10-03
+ *
  */
 
 #ifndef FLOW_HPP
 #define FLOW_HPP 1
 
-#include <cstdint>
+#include <cstdint>          // uintX types
 
-struct netflowV5H
+struct __attribute__((packed)) netflowV5H
 {
     uint16_t version;
     uint16_t count;
@@ -18,13 +19,13 @@ struct netflowV5H
     uint32_t unix_secs;
     uint32_t unix_nsecs;
     uint32_t flow_sequence;
-    uint8_t engine_type;
-    uint8_t engine_id;
+    uint8_t  engine_type;
+    uint8_t  engine_id;
     uint16_t sampling_interval;
 
 };
 
-struct netflowV5R
+struct __attribute__((packed)) netflowV5R
 {
     uint32_t srcaddr;
     uint32_t dstaddr;
@@ -37,15 +38,16 @@ struct netflowV5R
     uint32_t Last;
     uint16_t srcport;
     uint16_t dstport;
-    uint8_t pad1;
-    uint8_t tcp_flags;
-    uint8_t prot;
-    uint8_t tos;
+    uint8_t  pad1;
+    uint8_t  tcp_flags;
+    uint8_t  prot;
+    uint8_t  tos;
     uint16_t src_as;
     uint16_t dst_as;
-    uint8_t src_mask;
-    uint8_t dst_mask;
+    uint8_t  src_mask;
+    uint8_t  dst_mask;
     uint16_t pad2;
 };
+
 
 #endif

@@ -1,21 +1,19 @@
 /**
  * @file parse.hpp
- * @author xzvara01, xzvara01@stud.fit.vutbr.cz
+ * @author xzvara01 (xzvara01@stud.fit.vutbr.cz)
  * @brief Header file for parsing command line arguments
- * @date September 2022
+ * @date 2022-10-06
+ *
  */
 
 #ifndef PARSE_HPP
 #define PARSE_HPP 1
 
-#include <fstream>
 #include <string>
-#include <cstring>
-#include <iostream>
-#include <arpa/inet.h>          // pton
-#include <netinet/in.h>         // sockaddr_in, in_addr
+#include <cstring>              // strlen, memcpy
 #include <netdb.h>              // getaddrinfo
 
+/* Default values for the exporter */
 #define DEF_COLLECTOR   "127.0.0.1"
 #define DEF_PORT        2055
 #define DEF_ACTIVE      60
@@ -28,17 +26,16 @@
  */
 struct arguments
 {
-    std::istream* file      = &std::cin;        // default input file
-    bool _file_allocd       = false;            // indicator that file has been opened and needs to be freed
+    FILE* pcapfile          = stdin;            // pcap file
     std::string collector   = DEF_COLLECTOR;    // collector hostname
-    sockaddr_storage address;                   // collector IP address
+    sockaddr_storage address;                   // collector IP address (both IPv4 and IPv6)
     uint16_t port           = DEF_PORT;         // port number
-    uint32_t active         = DEF_ACTIVE;       // active timer
-    uint32_t inactive       = DEF_INACTIVE;     // inactive timer
+    uint16_t active         = DEF_ACTIVE;       // active timer
+    uint16_t inactive       = DEF_INACTIVE;     // inactive timer
     uint32_t cache_size     = DEF_COUNT;        // flow cache size
 
     /**
-     * @brief Construct a new arguments object with default address (ipv4 localhost)
+     * @brief Construct a new arguments object with filled default address (ipv4 localhost)
      */
     arguments()
     {
@@ -50,14 +47,6 @@ struct arguments
         memcpy(&address, address_list->ai_addr, address_list->ai_addrlen);
         freeaddrinfo(address_list);
     }
-
-    ~arguments()
-    {
-        if (_file_allocd) {
-            delete file;
-        }
-    }
-
 };
 
 /**
@@ -90,5 +79,20 @@ void parse_hostname(char *original, std::string& parsed_hostname, uint16_t& pars
  *  (see function arg_to_number)
  */
 void parse_arguments(int argc, char **argv, arguments& args);
+
+/**
+ * @brief Convert hostname into structure sockaddr stored in structure arguments
+ *
+ * @param[in]  hostname     String hostname
+ * @param[out] out_address  sockaddr structure to store converted IP address
+ */
+void convert_hostname(std::string hostname, sockaddr_storage* out_address);
+
+/**
+ * @brief Check if given address is valid IPv6 address
+ *
+ * @param[in] address String IP address
+ */
+bool is_valid_ipv6(const char* address);
 
 #endif

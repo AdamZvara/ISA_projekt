@@ -6,7 +6,8 @@ PROJECT = flow
 SRC = $(wildcard *.cpp)
 SRC += $(wildcard src/*.cpp)
 OBJ = $(patsubst %.cpp, %.o, $(SRC))
-DEPENDS := $(patsubst %.cpp,%.d,$(SRC))
+DEPENDS := $(patsubst %.cpp, %.d, $(SRC))
+
 
 .PHONY: all clean
 

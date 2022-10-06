@@ -1,17 +1,20 @@
 /**
  * @file parse.cpp
- * @author xzvara01, xzvara01@stud.fit.vutbr.cz
+ * @author xzvara01 (xzvara01@stud.fit.vutbr.cz)
  * @brief Main file for parsing command line arguments
- * @date September 2022
+ * @date 2022-10-06
+ *
  */
 
-#include <unistd.h>
-#include <cstring>  //strlen
+#include <iostream>
+#include <arpa/inet.h>          // inet_pton
+#include <unistd.h>             // uintX types
+#include <netinet/in.h>         // sockaddr_in, in_addr
 
 #include "parse.hpp"
-#include "common.hpp"
+#include "debug.hpp"
 
-#define OPTIONS "hf:c:a:i:m:P"
+#define OPTIONS "hf:c:a:i:m:"   // getopt option string
 
 void print_help()
 {
@@ -51,21 +54,31 @@ int arg_to_number(const char *str_number)
 
 void parse_hostname(char *original, std::string& parsed_hostname, uint16_t& parsed_port)
 {
-    // try to find port number and parse it
     size_t pos = 0;
     std::string hostname = original;
     std::string delim = ":";
     std::string str_port;
 
+    // if unchanged original hostname is valid IPv6 address, end function
     if (is_valid_ipv6(original)) {
         parsed_hostname = hostname;
         return;
     }
 
+    // try to find port number by searching for last colon in original hostname
     if ((pos = hostname.find_last_of(delim)) != std::string::npos) {
         str_port = hostname.substr(pos+1); // port number starts at pos+1 because of the colon
         hostname.erase(pos);
-        parsed_port = arg_to_number(str_port.c_str()); // convert port string to integer
+        parsed_port = arg_to_number(str_port.c_str());
+    }
+
+    // IPv6 notation with port number is [IPv6]:port, check if it matches
+    if (hostname.rfind('[', 0) == 0) {
+        std::string substr = hostname.substr(1, hostname.length() - 2);
+        if (is_valid_ipv6(substr.c_str())) {
+            parsed_hostname = substr;
+            return;
+        }
     }
 
     parsed_hostname = hostname;
@@ -95,8 +108,7 @@ void parse_arguments(int argc, char **argv, arguments& args)
             break;
 
         case 'f':
-            args.file = new std::ifstream(optarg);
-            args._file_allocd = true;
+            args.pcapfile = fopen(optarg, "r");
             break;
 
         case 'c':
@@ -107,7 +119,63 @@ void parse_arguments(int argc, char **argv, arguments& args)
         default:
             break;
         }
-
     }
     debug_print_options(args);
+}
+
+void convert_hostname(std::string hostname, sockaddr_storage* out_address)
+{
+    int error, sockfd;
+    addrinfo hints = {}, *address_list;
+    bool found = false;
+
+    hints.ai_family = AF_UNSPEC;    // get IPv4 and IPv6 addresses
+    hints.ai_socktype = SOCK_DGRAM; // prefered UDP socket type
+    hints.ai_protocol = IPPROTO_UDP; // prefered UDP protocol
+
+    // getaddrinfo returns linked list with available IP addresses
+    if ((error = getaddrinfo(hostname.c_str(), NULL, &hints, &address_list)) != 0) {
+        std::string msg = "getaddrinfo failed: ";
+        msg.append(gai_strerror(error));
+        throw std::runtime_error(msg);
+    }
+
+    // iterate through linked list of addresses and try to connect to one
+    for (addrinfo *address = address_list; address != NULL; address = address->ai_next) {
+        // create new socket to connect to address
+        if ((sockfd = socket(address->ai_family, address->ai_socktype, address->ai_protocol)) == -1) {
+            // socket could not be created, continue to another address
+            continue;
+        }
+
+        // try to connect to address
+        if (connect(sockfd, address->ai_addr, address->ai_addrlen) == 0) {
+            #if DEBUG_PARSE == 1 // debugging print
+                char host[NI_MAXHOST] = {};
+                getnameinfo(address->ai_addr, address->ai_addrlen, host, sizeof(host), NULL, 0, NI_NUMERICHOST);
+                printf("[common.cpp] real IP\t%s\n", host);
+            #endif
+
+            // valid address was found
+            memcpy(out_address, address->ai_addr, address->ai_addrlen);
+            found = true;
+            close(sockfd);
+            break;
+        }
+        close(sockfd);
+    }
+
+    freeaddrinfo(address_list);
+
+    // no valid address was found
+    if (!found) {
+        throw std::runtime_error("no collector IP address could be resolved");
+    }
+
+}
+
+bool is_valid_ipv6(const char* address)
+{
+    sockaddr_in6 result = {};
+    return inet_pton(AF_INET6, address, &result) == 1 ? true : false;
 }
