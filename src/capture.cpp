@@ -18,8 +18,10 @@
 
 Capture::~Capture()
 {
-    pcap_freecode(&fp);
-    pcap_close(handle);
+    if (handle != NULL) {
+        pcap_freecode(&fp);
+        pcap_close(handle);
+    }
 }
 
 void Capture::open(FILE* file)
@@ -58,36 +60,37 @@ int Capture::next_packet()
         return err;
     }
 
+    // check if we are capturing ethernet
+    if (pcap_datalink(handle) != DLT_EN10MB) {
+        return ERR_NONETH;
+    }
+
     /* parsing ethernet header */
     // check if eth header is long enough so that we dont access invalid memory
     if (header->len < ETH_HLEN) {
-        throw std::runtime_error("Incomplete ethernet header");
-    }
-    eth_header = (struct ether_header *) packet;
-    if (ntohs(eth_header->ether_type) != ETHERTYPE_IP) {
-        throw std::runtime_error("Non ethernet packets are not accepted");
+        return ERR_INCOMPLETE;
     }
 
     /* parsing ip header */
     // check if ip header is long enough so that we dont access invalid memory
     ip_header = (iphdr *)(packet + ETH_HLEN);
     if (header->len - ETH_HLEN < IP_MINLEN) {
-        throw std::runtime_error("Incomplete IP header");
+        return ERR_INCOMPLETE;
     }
 
     // remaining of the header is transport layer protocol - check for each protocol if they are complete
     int ip_hlen = (ip_header->ihl & 0xf) * 4;
     if (ip_header->protocol == IPPROTO_TCP) {
         if (header->len - ETH_HLEN - ip_hlen < TCP_MINLEN) {
-            throw std::runtime_error("Incomplete TCP header");
+            return ERR_INCOMPLETE;
         }
     } else if (ip_header->protocol == IPPROTO_UDP) {
         if (header->len - ETH_HLEN - ip_hlen < UDP_LEN) {
-            throw std::runtime_error("Incomplete UDP header");
+            return ERR_INCOMPLETE;
         }
     } else { // ICMP header
         if (header->len - ETH_HLEN - ip_hlen < ICMP_LEN) {
-            throw std::runtime_error("Incomplete ICMP header");
+            return ERR_INCOMPLETE;
         }
     }
 

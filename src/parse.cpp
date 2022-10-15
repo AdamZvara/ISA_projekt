@@ -28,7 +28,7 @@ void print_help()
                 << "  -m=COUNT\t\tSize of flow cache (default 1024)\n";
 }
 
-void debug_print_options(arguments& args)
+void debug_print_options(const arguments& args)
 {
     (void) args; // compiler does not produce warning when not debugging
     dpprintf("[parse.cpp] active\t%d\n", args.active);
@@ -52,7 +52,7 @@ int arg_to_number(const char *str_number)
     return converted_num;
 }
 
-void parse_hostname(char *original, std::string& parsed_hostname, uint16_t& parsed_port)
+void parse_hostname(const char *original, std::string& parsed_hostname, uint16_t& parsed_port)
 {
     size_t pos = 0;
     std::string hostname = original;
@@ -108,7 +108,9 @@ void parse_arguments(int argc, char **argv, arguments& args)
             break;
 
         case 'f':
-            args.pcapfile = fopen(optarg, "r");
+            if ((args.pcapfile = fopen(optarg, "r")) == NULL) {
+                throw std::runtime_error("could not open given file");
+            }
             break;
 
         case 'c':

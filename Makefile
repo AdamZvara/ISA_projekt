@@ -8,14 +8,12 @@ SRC += $(wildcard src/*.cpp)
 OBJ = $(patsubst %.cpp, %.o, $(SRC))
 DEPENDS := $(patsubst %.cpp, %.d, $(SRC))
 
-
-.PHONY: all clean
+.PHONY: all clean test
 
 all: $(PROJECT)
 
 $(PROJECT): $(OBJ)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LFLAGS)
-
 
 # generating dependency files
 # source https://stackoverflow.com/a/52036564
@@ -26,3 +24,6 @@ $(PROJECT): $(OBJ)
 
 clean:
 	$(RM) $(PROJECT) $(DEPENDS) $(OBJ)
+
+test:
+	cd test; ./test.sh

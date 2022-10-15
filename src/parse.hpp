@@ -6,8 +6,8 @@
  *
  */
 
-#ifndef PARSE_HPP
-#define PARSE_HPP 1
+#ifndef _PARSE_HPP
+#define _PARSE_HPP 1
 
 #include <string>
 #include <cstring>              // strlen, memcpy
@@ -66,7 +66,7 @@ int arg_to_number(const char *str_number);
  * @param[out] parsed_hostname  Parsed hostname
  * @param[out] parsed_port      Parsed port number
  */
-void parse_hostname(char *original, std::string& parsed_hostname, uint16_t& parsed_port);
+void parse_hostname(const char *original, std::string& parsed_hostname, uint16_t& parsed_port);
 
 /**
  * @brief Parse arguments from command line into arguments structure

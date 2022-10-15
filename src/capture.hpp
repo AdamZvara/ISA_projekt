@@ -13,6 +13,8 @@
 #include <netinet/ip.h>         // struct iphdr
 #include <netinet/if_ether.h>   // struct ether_header
 
+#define ERR_INCOMPLETE -4
+#define ERR_NONETH     -5
 
 class Capture
 {
@@ -45,7 +47,7 @@ public:
     /**
      * @brief Apply filter_expr to pcap handler
      *
-     * @param filter_expr Expression to be applied
+     * @param[in] filter_expr Expression to be applied
      */
     void apply_filter(const char* filter_expr);
 
@@ -53,6 +55,8 @@ public:
      * @brief Get next packet from savefile and parse it to public structures (header, iphdr, ethhdr ...)
      *
      * @return int Return value from function pcap_next_ex
+     *
+     * @throw runtime_error If any header was not complete or link layer header was not ETHERNET
      */
     int next_packet();
 };

@@ -2,3 +2,6 @@ flow
 .vscode/*
 *.o
 *.d
+test/out/*.pcap_out
+test/out/*.pcap_fcache
+test/out/*.pcap_timers
