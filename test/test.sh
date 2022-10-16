@@ -37,15 +37,17 @@ for FILE in `ls src`; do
     PID=$!
     sleep 0.3
 
-    .././flow -f "src/$FILE" -c localhost:9995
+    .././flow -f "src/$FILE" -c 127.0.0.1:9995
 
     kill $PID
 
-    nfdump -r `ls out/nfcapd*` -q -o 'fmt:%sa:%sp %da:%dp %pr %pkt %byt %tos' > "out/${FILE}_out"
+    nfdump -r `ls out/nfcapd*` -q -o 'fmt:%sa:%sp %da:%dp %pr %pkt %byt %tos' | sort > "out/${FILE}_out"
     if [ $? -ne 0 ]; then
         echo -e "${RED}${BOLD}TESTS FAILED, RERUN"
         exit 1
     fi
+
+
 
     diff -w  --changed-group-format='%<' --unchanged-group-format='' out/${FILE}_out out/${FILE%.*}
     if [ $? -eq 0 ]; then
@@ -70,11 +72,11 @@ for FILE in ${FILES[@]}; do
     PID=$!
     sleep 0.3
 
-    .././flow -f "src/$FILE" -c localhost:9995 -m 5
+    .././flow -f "src/$FILE" -c 127.0.0.1:9995 -m 5
 
     kill $PID
 
-    nfdump -r `ls out/nfcapd*` -q -o 'fmt:%sa:%sp %da:%dp %pr %pkt %byt %tos' > "out/${FILE}_fcache"
+    nfdump -r `ls out/nfcapd*` -q -o 'fmt:%sa:%sp %da:%dp %pr %pkt %byt %tos' | sort > "out/${FILE}_fcache"
     if [ $? -ne 0 ]; then
         echo -e "${RED}${BOLD}TESTS FAILED, RERUN"
         exit 1
@@ -101,11 +103,11 @@ for FILE in ${FILES[@]}; do
     PID=$!
     sleep 0.3
 
-    .././flow -f "src/$FILE" -c localhost:9995 -i 5 -a 30
+    .././flow -f "src/$FILE" -c 127.0.0.1:9995 -i 5 -a 30
 
     kill $PID
 
-    nfdump -r `ls out/nfcapd*` -q -o 'fmt:%sa:%sp %da:%dp %pr %pkt %byt %tos' > "out/${FILE}_timers"
+    nfdump -r `ls out/nfcapd*` -q -o 'fmt:%sa:%sp %da:%dp %pr %pkt %byt %tos' | sort > "out/${FILE}_timers"
     if [ $? -ne 0 ]; then
         echo -e "${RED}${BOLD}TESTS FAILED, RERUN"
         exit 1

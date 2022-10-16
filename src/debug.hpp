@@ -1,13 +1,13 @@
 /**
  * @file debug.hpp
  * @author xzvara01 (xzvara01@stud.fit.vutbr.cz)
- * @brief Debug output file
+ * @brief Debug macros for printing out values to stderr
  * @date 2022-10-06
  *
  */
 
 #ifndef _DEBUG_HPP
-#define _DEBUG_HPP 1
+#define _DEBUG_HPP
 
 /* Define return values */
 #define DEBUG_STRING "srcIP %u, dstIP %u, srcPort %u, dstPort %u, protocol %u, first %u, last %u, octets %u, packets %u\n"

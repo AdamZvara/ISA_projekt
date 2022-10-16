@@ -2,18 +2,16 @@
  * @file flow.hpp
  * @author xzvara01 (xzvara01@stud.fit.vutbr.cz)
  * @brief Provide declarations for NetFlow (version 5) structures
- * @date 2022-10-06
+ * @date 2022-10-16
  *
  */
 
 #ifndef _FLOW_HPP
-#define _FLOW_HPP 1
+#define _FLOW_HPP
 
-#include <vector>
 #include <cstdint>          // uintX types
 
 #include "src/parse.hpp"
-
 
 struct __attribute__((packed)) netflowV5H
 {
@@ -52,20 +50,5 @@ struct __attribute__((packed)) netflowV5R
     uint8_t  dst_mask;
     uint16_t pad2;
 };
-
-/**
- * @brief Send data with given size over UDP to address
- *
- * @param[in] data    data to be sent
- * @param[in] size    size of data
- * @param[in] address address to send to
- * @param[in] port    port to send to
- *
- * @throw runtime_error socket() or sendto() failed
- */
-void sendUdp(const char *data, const size_t size, sockaddr_storage& address, const uint16_t port);
-
-char *prepare_structs(std::vector<netflowV5R> flows, size_t& buff_size);
-
 
 #endif

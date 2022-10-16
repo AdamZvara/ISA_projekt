@@ -2,19 +2,19 @@
  * @file capture.hpp
  * @author xzvara01 (xzvara01@stud.fit.vutbr.cz)
  * @brief Header file for capturing incoming traffic
- * @date 2022-10-06
+ * @date 2022-10-16
  *
  */
 
 #ifndef _CAPTURE_HPP
-#define _CAPTURE_HPP 1
+#define _CAPTURE_HPP
 
 #include <pcap.h>
 #include <netinet/ip.h>         // struct iphdr
 #include <netinet/if_ether.h>   // struct ether_header
 
-#define ERR_INCOMPLETE -4
-#define ERR_NONETH     -5
+#define ERR_INCOMPLETE -10
+#define ERR_NONETH     -11
 
 class Capture
 {
@@ -29,10 +29,8 @@ public:
     iphdr *ip_header;                   // ip header
     ether_header *eth_header;           // ethernet header
     void *transport_header;             // trasnport header (later casted to the correct type)
-    /**
-     * @brief Destroy the Capture object and free all allocated memory
-     *
-     */
+
+    /** @brief Destroy the Capture object and free allocated memory */
     ~Capture();
 
     /**
@@ -52,13 +50,34 @@ public:
     void apply_filter(const char* filter_expr);
 
     /**
-     * @brief Get next packet from savefile and parse it to public structures (header, iphdr, ethhdr ...)
+     * @brief Get next packet from savefile and parse it to public structures (header, iphdr, eth_header ...)
      *
-     * @return int Return value from function pcap_next_ex
+     * @return ERR_INCOMPLETE Captured packet (one of the headers) was incomplete
+     * @return ERR_NONETH Captured packet does not have ETHERNET link layer header
+     * @return otherwise returns value from pcap function pcap_next()
      *
-     * @throw runtime_error If any header was not complete or link layer header was not ETHERNET
      */
     int next_packet();
+
+    /**
+     * @brief Calculate time, when packet has been capture (relative to SysUpTime)
+     *
+     * @return Calculated time
+     */
+    int get_packet_timestamp() const;
+
+    /**
+     * @brief Retrieve port numbers from captured packet
+     *
+     * @param[out] Sportn source port number
+     * @param[out] Dportn destination port number
+     */
+    void get_ports(uint16_t& Sportn, uint16_t& Dportn) const;
+
+    /**
+     * @brief Return whether current packet is TCP with FIN or RST flag set
+     */
+    bool tcp_rstfin() const;
 };
 
 #endif

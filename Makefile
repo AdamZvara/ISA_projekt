@@ -24,6 +24,7 @@ $(PROJECT): $(OBJ)
 
 clean:
 	$(RM) $(PROJECT) $(DEPENDS) $(OBJ)
+	$(RM) test/out/*.pcap_out test/out/*.pcap_fcache test/out/*.pcap_timers
 
-test:
+test: $(PROJECT)
 	cd test; ./test.sh

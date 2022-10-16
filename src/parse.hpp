@@ -7,7 +7,7 @@
  */
 
 #ifndef _PARSE_HPP
-#define _PARSE_HPP 1
+#define _PARSE_HPP
 
 #include <string>
 #include <cstring>              // strlen, memcpy

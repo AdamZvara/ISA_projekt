@@ -2,19 +2,24 @@
  * @file capture.cpp
  * @author xzvara01 (xzvara01@stud.fit.vutbr.cz)
  * @brief Capturing incoming traffic with libpcap
- * @date 2022-10-06
+ * @date 2022-10-16
  *
  */
 
 #include <iostream>
 #include <string>
+#include <netinet/tcp.h>     // struct tcphdr
+#include <netinet/udp.h>     // struct udphdr
 
 #include "capture.hpp"
 
 #define IP_MINLEN  20
 #define TCP_MINLEN 20
-#define UDP_LEN 8
-#define ICMP_LEN 8
+#define UDP_LEN     8
+#define ICMP_LEN    8
+
+uint64_t SysUpTime;     // save system uptime from first captured packet (in miliseconds)
+timeval LastChecked;    // store last time we checked flow_cache for records to export (in miliseconds)
 
 Capture::~Capture()
 {
@@ -35,8 +40,8 @@ void Capture::open(FILE* file)
 
 void Capture::apply_filter(const char* filter_expr)
 {
-    // compile and apply filter
 	if (pcap_compile(handle, &fp, filter_expr, 0, 0) == -1) {
+        // print out nice error message
         std::string msg("Couldn't parse filter \"");
         msg.append(filter_expr);
         msg.append("\"");
@@ -44,6 +49,7 @@ void Capture::apply_filter(const char* filter_expr)
 	}
 
 	if (pcap_setfilter(handle, &fp) == -1) {
+        // print out nice error message
         std::string msg("Couldn't install filter \"");
         msg.append(filter_expr);
         msg.append("\"");
@@ -96,5 +102,42 @@ int Capture::next_packet()
 
     transport_header = (void *)(packet + ETH_HLEN + ip_hlen);
 
+    /** Update LastChecked value with last packet */
+    LastChecked.tv_sec = header->ts.tv_sec;
+    LastChecked.tv_usec = header->ts.tv_usec;
+
     return 0;
+}
+
+int Capture::get_packet_timestamp() const
+{
+    return (header->ts.tv_sec * 1000) + (header->ts.tv_usec / 1000)  - SysUpTime;
+}
+
+void Capture::get_ports(uint16_t& Sportn, uint16_t& Dportn) const
+{
+    uint16_t proto = ip_header->protocol;
+    if (proto == IPPROTO_TCP) {
+        tcphdr *hdr = (tcphdr *)transport_header;
+        Sportn = hdr->th_sport;
+        Dportn = hdr->th_dport;
+    } else if (proto == IPPROTO_UDP) {
+        udphdr *hdr = (udphdr *)transport_header;
+        Sportn = hdr->uh_sport;
+        Dportn = hdr->uh_dport;
+    } else {
+        Sportn = Dportn = 0; // ICMP has no port
+    }
+}
+
+bool Capture::tcp_rstfin() const
+{
+    tcphdr *hdr;
+    if (ip_header->protocol == IPPROTO_TCP) {
+        hdr = (tcphdr *)transport_header;
+        if (hdr->th_flags & TH_FIN || hdr->th_flags == TH_RST) {
+            return true;
+        }
+    }
+    return false;
 }
