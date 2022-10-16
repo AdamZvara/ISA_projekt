@@ -10,6 +10,7 @@
 #include <string>
 #include <netinet/tcp.h>     // struct tcphdr
 #include <netinet/udp.h>     // struct udphdr
+#include <netinet/ip_icmp.h> // struct ip_icmp
 
 #include "capture.hpp"
 
@@ -126,7 +127,9 @@ void Capture::get_ports(uint16_t& Sportn, uint16_t& Dportn) const
         Sportn = hdr->uh_sport;
         Dportn = hdr->uh_dport;
     } else {
-        Sportn = Dportn = 0; // ICMP has no port
+        icmphdr *hdr = (icmphdr *)transport_header;
+        Sportn = 0;
+        Dportn = (hdr->type << 8) + hdr->code;
     }
 }
 

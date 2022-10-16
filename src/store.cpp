@@ -8,7 +8,6 @@
 
 #include <netinet/tcp.h>     // struct tcphdr
 #include <netinet/udp.h>     // struct udphdr
-#include <netinet/ip_icmp.h> // struct ip_icmp
 #include <algorithm>         // find
 
 #include "store.hpp"
@@ -31,7 +30,6 @@ void Store::create_flow(const Capture &cap, netflowV5R& flow, const uint16_t Spo
 {
     // !! only access if packet contained TCP header !!
     tcphdr *tcp_hdr = (tcphdr *)cap.transport_header;
-    icmphdr *icmp_hdr = (icmphdr *)cap.transport_header;
 
     // if it is the first packet ever recieved, set SysUptime
     if (SysUpTime == 0) {
@@ -47,15 +45,10 @@ void Store::create_flow(const Capture &cap, netflowV5R& flow, const uint16_t Spo
     flow.First = htonl(cap.get_packet_timestamp());
     flow.Last = flow.First;
     flow.srcport = Sportn;
+    flow.dstport = Dportn;
     flow.tcp_flags = protocol == IPPROTO_TCP ? tcp_hdr->th_flags : 0;
     flow.prot = cap.ip_header->protocol;
     flow.tos = cap.ip_header->tos;
-    if (protocol == IPPROTO_TCP || protocol == IPPROTO_UDP) {
-        flow.dstport = Dportn;
-    } else { // ICMP destination port is ICMP_type + ICMP_code
-        flow.dstport = (icmp_hdr->type << 8) + icmp_hdr->code;
-    }
-
 }
 
 void Store::update_flow(const Capture &cap, netflowV5R& flow)
