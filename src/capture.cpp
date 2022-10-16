@@ -130,12 +130,24 @@ void Capture::get_ports(uint16_t& Sportn, uint16_t& Dportn) const
     }
 }
 
-bool Capture::tcp_rstfin() const
+bool Capture::tcp_fin() const
 {
     tcphdr *hdr;
     if (ip_header->protocol == IPPROTO_TCP) {
         hdr = (tcphdr *)transport_header;
-        if (hdr->th_flags & TH_FIN || hdr->th_flags == TH_RST) {
+        if (hdr->th_flags & TH_FIN) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool Capture::tcp_ack() const
+{
+    tcphdr *hdr;
+    if (ip_header->protocol == IPPROTO_TCP) {
+        hdr = (tcphdr *)transport_header;
+        if (hdr->th_flags & TH_ACK) {
             return true;
         }
     }

@@ -51,4 +51,9 @@ struct __attribute__((packed)) netflowV5R
     uint16_t pad2;
 };
 
+struct NetFlowRecord {
+    netflowV5R rec;
+    uint8_t lastFlag;
+};
+
 #endif

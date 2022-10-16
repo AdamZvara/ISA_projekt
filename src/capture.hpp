@@ -74,10 +74,11 @@ public:
      */
     void get_ports(uint16_t& Sportn, uint16_t& Dportn) const;
 
-    /**
-     * @brief Return whether current packet is TCP with FIN or RST flag set
-     */
-    bool tcp_rstfin() const;
+    /** @brief Return whether current packet is TCP with FIN or RST flag set */
+    bool tcp_fin() const;
+
+    /** @brief Return whether current packet is TCP with FIN or RST flag set */
+    bool tcp_ack() const;
 };
 
 #endif

@@ -26,7 +26,7 @@ inline bool sortingFunction(netflowV5R r1, netflowV5R r2) {
     return (ntohl(r1.First) < ntohl(r2.First));
 }
 
-void Store::create_flow(const Capture &cap, netflowV5R& flow, const uint16_t Sportn, const uint16_t Dportn)
+void Store::create_flow(const Capture &cap, NetFlowRecord& flow, const uint16_t Sportn, const uint16_t Dportn)
 {
     // !! only access if packet contained TCP header !!
     tcphdr *hdr = (tcphdr *)cap.transport_header;
@@ -36,28 +36,31 @@ void Store::create_flow(const Capture &cap, netflowV5R& flow, const uint16_t Spo
         SysUpTime = (cap.header->ts.tv_sec * 1000) + (cap.header->ts.tv_usec / 1000);
     }
 
-    flow.srcaddr = cap.ip_header->saddr;
-    flow.dstaddr = cap.ip_header->daddr;
-    flow.dPkts = htonl(1);
-    flow.dOctets = htonl(cap.header->len - ETH_HLEN);
-    flow.First = htonl(cap.get_packet_timestamp());
-    flow.Last = flow.First;
-    flow.srcport = Sportn;
-    flow.dstport = Dportn;
-    flow.tcp_flags = cap.ip_header->protocol == IPPROTO_TCP ? hdr->th_flags : 0;
-    flow.prot = cap.ip_header->protocol;
-    flow.tos = cap.ip_header->tos;
+    flow.rec.srcaddr = cap.ip_header->saddr;
+    flow.rec.dstaddr = cap.ip_header->daddr;
+    flow.rec.dPkts = htonl(1);
+    flow.rec.dOctets = htonl(cap.header->len - ETH_HLEN);
+    flow.rec.First = htonl(cap.get_packet_timestamp());
+    flow.rec.Last = flow.rec.First;
+    flow.rec.srcport = Sportn;
+    flow.rec.dstport = Dportn;
+    flow.rec.tcp_flags = cap.ip_header->protocol == IPPROTO_TCP ? hdr->th_flags : 0;
+    flow.rec.prot = cap.ip_header->protocol;
+    flow.rec.tos = cap.ip_header->tos;
+    flow.lastFlag = cap.ip_header->protocol == IPPROTO_TCP ? hdr->th_flags : 0;
 }
 
-void Store::update_flow(const Capture &cap, netflowV5R& flow)
+void Store::update_flow(const Capture &cap, NetFlowRecord& flow)
 {
     // !! only access if packet contained TCP header !!
     tcphdr *hdr = (tcphdr *)cap.transport_header;
 
-    flow.dPkts = htonl(ntohl(flow.dPkts) + 1);
-    flow.dOctets = htonl(ntohl(flow.dOctets) + cap.header->len - ETH_HLEN);
-    flow.Last = htonl(cap.get_packet_timestamp());
-    flow.tcp_flags |= (flow.prot == IPPROTO_TCP ? hdr->th_flags : 0);
+    flow.rec.dPkts = htonl(ntohl(flow.rec.dPkts) + 1);
+    flow.rec.dOctets = htonl(ntohl(flow.rec.dOctets) + cap.header->len - ETH_HLEN);
+    flow.rec.Last = htonl(cap.get_packet_timestamp());
+    flow.rec.tcp_flags |= (flow.rec.prot == IPPROTO_TCP ? hdr->th_flags : 0);
+
+    flow.lastFlag = flow.rec.prot == IPPROTO_TCP ? hdr->th_flags : 0;
 }
 
 int Store::find_flow(const Capture& cap, netflowV5R *record)
@@ -67,7 +70,7 @@ int Store::find_flow(const Capture& cap, netflowV5R *record)
     cap.get_ports(Sportn, Dportn);
     key = std::make_tuple(cap.ip_header->saddr, cap.ip_header->daddr, Sportn, Dportn, cap.ip_header->protocol);
     try {
-        *record = flow_cache.at(key);
+        *record = flow_cache.at(key).rec;
     } catch(const std::exception& e) {
         return -1;
     }
@@ -82,7 +85,7 @@ void Store::export_oldest(arguments args)
     flowc_t::const_iterator to_delete;
     uint32_t oldest_time = UINT32_MAX;
     for (auto record = flow_cache.cbegin(); record != flow_cache.cend(); ++record) {
-        uint32_t convertedTime = ntohl(record->second.First);
+        uint32_t convertedTime = ntohl(record->second.rec.First);
         if (convertedTime < oldest_time) {
             to_delete = record;
             oldest_time = convertedTime;
@@ -92,7 +95,7 @@ void Store::export_oldest(arguments args)
     /** Erase record from cache and export it */
     flow_cache.erase(to_delete);
     std::vector<netflowV5R> flows_to_export;
-    flows_to_export.push_back(to_delete->second);
+    flows_to_export.push_back(to_delete->second.rec);
     send_udp(flows_to_export, args.address, args.port);
     dfcprintf();
 }
@@ -111,6 +114,13 @@ int Store::insert(const Capture& cap, arguments args)
         // flow already exists in cache
         update_flow(cap, search->second);
 
+         // check for TCP termination based on flags
+        if (cap.tcp_fin() && (search->second.lastFlag & TH_ACK)) {
+            export_single(cap, args);
+        } else if (cap.tcp_ack() && (search->second.lastFlag & TH_FIN)) {
+            export_single(cap, args);
+        }
+
         // debug print
         diuprintf(search->second.srcaddr, search->second.dstaddr, search->second.srcport, search->second.dstport,\
             search->second.prot, search->second.First, search->second.Last, search->second.dOctets, search->second.dPkts);
@@ -121,7 +131,7 @@ int Store::insert(const Capture& cap, arguments args)
             export_oldest(args);
         }
 
-        netflowV5R flow {};
+        NetFlowRecord flow {};
         create_flow(cap, flow, Sportn, Dportn);
         flow_cache.insert({key, flow});
 
@@ -147,24 +157,24 @@ void Store::fexport(arguments args)
             }
 
             // check for inactive timer
-            if (LastChecked.tv_sec*1000+LastChecked.tv_usec/1000 - SysUpTime - ntohl(record->second.Last) > args.inactive * 1000) {
+            if (LastChecked.tv_sec*1000+LastChecked.tv_usec/1000 - SysUpTime - ntohl(record->second.rec.Last) > args.inactive * 1000) {
                 // debug print
                 deprintf("Inactive timeout ran out: ");
                 dexprintf();
 
-                flows_to_export.push_back(record->second); // store flows to be exported
+                flows_to_export.push_back(record->second.rec); // store flows to be exported
                 flow_cache.erase(record++); // removing items from map while iterating workaround
                 counter++;
                 continue;
             }
 
             // check for active timer
-            if (ntohl(record->second.Last) - ntohl(record->second.First) > args.active * 1000) {
+            if (ntohl(record->second.rec.Last) - ntohl(record->second.rec.First) > args.active * 1000) {
                 // debug print
                 deprintf("Active timeout ran out: ");
                 dexprintf();
 
-                flows_to_export.push_back(record->second); // store flows to be exported
+                flows_to_export.push_back(record->second.rec); // store flows to be exported
                 flow_cache.erase(record++);
                 counter++;
                 continue;
@@ -210,7 +220,7 @@ void Store::clear(arguments args)
     while (!flow_cache.empty()) {
         int counter = 0;
         for (auto record = flow_cache.cbegin(); record != flow_cache.cend();) {
-            flows_to_export.push_back(record->second); // store flows to be exported
+            flows_to_export.push_back(record->second.rec); // store flows to be exported
             flow_cache.erase(record++); // removing items from map while iterating
             if (++counter == 30) {
                 counter = 0;
@@ -226,8 +236,6 @@ void Store::clear(arguments args)
     flows_to_export.clear();
     }
 }
-
-
 
 void fill_header(netflowV5H& header, const int count)
 {

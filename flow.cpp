@@ -61,10 +61,6 @@ int main(int argc, char **argv)
             std::cerr << e.what() << '\n';
             return ERR;
         }
-
-        if (cap.tcp_rstfin()) {
-            storage.export_single(cap, args);
-        }
     }
 
     dfcprintf(); // print out flow cache for debugging purposes

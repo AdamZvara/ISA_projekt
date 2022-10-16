@@ -24,7 +24,7 @@
 typedef std::tuple<uint32_t, uint32_t, uint16_t, uint16_t, uint8_t> netkey_t;
 
 /** Flow_cache          */
-typedef std::map<netkey_t, netflowV5R> flowc_t;
+typedef std::map<netkey_t, NetFlowRecord> flowc_t;
 
 extern uint64_t SysUpTime;
 extern timeval LastChecked;
@@ -43,7 +43,7 @@ private:
      * @param[in]  Sportn Source port number
      * @param[in]  Dportn Destination port number
      */
-    void create_flow(const Capture &cap, netflowV5R& flow, const uint16_t Sportn, const uint16_t Dportn);
+    void create_flow(const Capture &cap, NetFlowRecord& flow, const uint16_t Sportn, const uint16_t Dportn);
 
     /**
      * @brief Update flow which is already stored in flow cache
@@ -51,7 +51,7 @@ private:
      * @param[in]  cap  Captured packet
      * @param[out] flow Flow to be updated
      */
-    void update_flow(const Capture &cap, netflowV5R& flow);
+    void update_flow(const Capture &cap, NetFlowRecord& flow);
 
     /**
      * @brief Find flow in flow cache and return in it argument called flow
