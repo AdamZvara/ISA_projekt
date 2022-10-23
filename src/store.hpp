@@ -21,7 +21,8 @@
 #define EXPORT_TIMER 1000
 
 /** Flow cache key      */
-typedef std::tuple<uint32_t, uint32_t, uint16_t, uint16_t, uint8_t> netkey_t;
+//                  SRCIP      DSTIP   SRC_PORT  DST_PORT   PROTO     TOS
+typedef std::tuple<uint32_t, uint32_t, uint16_t, uint16_t, uint8_t, uint8_t> netkey_t;
 
 /** Flow_cache          */
 typedef std::map<netkey_t, netflowV5R> flowc_t;

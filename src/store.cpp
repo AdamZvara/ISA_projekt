@@ -67,7 +67,7 @@ int Store::find_flow(const Capture& cap, netflowV5R *record)
     uint16_t Sportn, Dportn;
     netkey_t key;
     cap.get_ports(Sportn, Dportn);
-    key = std::make_tuple(cap.ip_header->saddr, cap.ip_header->daddr, Sportn, Dportn, cap.ip_header->protocol);
+    key = std::make_tuple(cap.ip_header->saddr, cap.ip_header->daddr, Sportn, Dportn, cap.ip_header->protocol, cap.ip_header->tos);
     try {
         *record = flow_cache.at(key);
     } catch(const std::exception& e) {
@@ -106,7 +106,7 @@ int Store::insert(const Capture& cap, arguments args)
     uint16_t Sportn, Dportn;
     netkey_t key;
     cap.get_ports(Sportn, Dportn);
-    key = std::make_tuple(cap.ip_header->saddr, cap.ip_header->daddr, Sportn, Dportn, cap.ip_header->protocol);
+    key = std::make_tuple(cap.ip_header->saddr, cap.ip_header->daddr, Sportn, Dportn, cap.ip_header->protocol, cap.ip_header->tos);
 
     auto search = flow_cache.find(key);
     if (search != flow_cache.end()) {
