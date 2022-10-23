@@ -45,7 +45,9 @@ int main(int argc, char **argv)
         if (ret < 0) {
             if (ret == ERR_INCOMPLETE || ret == ERR_NONETH) {
                 // skip these packets and continue
-                std::cerr << "Skipped packet\n";
+                std::cerr << (ret == ERR_NONETH ?
+                    "Non Ethernet packed received ... skipping\n" :
+                    "Incomplete or malformed packet received\n");
                 continue;
             } else {
                 std::cerr << "Reading packet failed\n";

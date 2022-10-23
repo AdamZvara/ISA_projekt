@@ -41,7 +41,7 @@ void Store::create_flow(const Capture &cap, netflowV5R& flow, const uint16_t Spo
     flow.srcaddr = cap.ip_header->saddr;
     flow.dstaddr = cap.ip_header->daddr;
     flow.dPkts = htonl(1);
-    flow.dOctets = htonl(cap.header->len - ETH_HLEN);
+    flow.dOctets = htonl(ntohs(cap.ip_header->tot_len));
     flow.First = htonl(cap.get_packet_timestamp());
     flow.Last = flow.First;
     flow.srcport = Sportn;
@@ -57,7 +57,7 @@ void Store::update_flow(const Capture &cap, netflowV5R& flow)
     tcphdr *hdr = (tcphdr *)cap.transport_header;
 
     flow.dPkts = htonl(ntohl(flow.dPkts) + 1);
-    flow.dOctets = htonl(ntohl(flow.dOctets) + cap.header->len - ETH_HLEN);
+    flow.dOctets = htonl(ntohl(flow.dOctets) + ntohs(cap.ip_header->tot_len));
     flow.Last = htonl(cap.get_packet_timestamp());
     flow.tcp_flags |= (flow.prot == IPPROTO_TCP ? hdr->th_flags : 0);
 }
